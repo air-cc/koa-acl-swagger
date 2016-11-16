@@ -4,6 +4,10 @@
 
 a role base access controller and working with swagger (named OpenAPI now)
 
+In YAML file, add `x-resource` option to each path. when a user visit this url, the middleware will check the permission based on resource name and HTTP method. like "user `test-user` have the permission `post` of the resource `pets`". so you should set role-base permission before.
+
+see demo in `examples/app`
+
 
 ## Install
 > Node.js >= 6.x && Koa >= 2.x
@@ -32,6 +36,9 @@ const acl = new Acl({
     skip: 1
   }
 })
+
+// init permissions by acl
+// ....
 
 app.use(acl.getMiddleware())
 

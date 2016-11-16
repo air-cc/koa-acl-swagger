@@ -19,7 +19,8 @@
     "acl",
     "swagger",
     "rest",
-    "restful"
+    "restful",
+    "openapi"
   ],
   "engines": {
     "node": ">= 6.x"
