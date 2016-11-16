@@ -27,10 +27,10 @@ const ERROR = {
 }
 
 
-export default class AclMidware extends Acl {
+export default class AclSwagger extends Acl {
 
   /**
-   * AclMidware 构造函数
+   * AclSwagger 构造函数
    * @param  {Object} opts.store        存储角色信息的数据库客户端 如：{type: 'redis', client: '', prefix}
    * @param  {Object} opts.error        错误警告信息 如：{"NO_PERMISSION": "no permission"}
    * @param  {String} opts.api.dir      api: router 中 router与source的对应关系
