@@ -14,8 +14,9 @@ import Acl from './acl'
 import debugMod from 'debug'
 import SwaggerParser from 'swagger-parser'
 import fs from 'fs'
+import SwaggerPathParser from './swagger-path-parser'
 
-const debug = debugMod('koa-acl-swagger:main')
+const debug = debugMod('koa-acl-swagger:middleware')
 
 const {redisBackend, mongodbBackend, memoryBackend} = Acl
 
@@ -26,7 +27,7 @@ const ERROR = {
 }
 
 
-export default class AclSwagger extends Acl {
+export default class AclMidware extends Acl {
 
   /**
    * AclMidware 构造函数
@@ -34,6 +35,7 @@ export default class AclSwagger extends Acl {
    * @param  {Object} opts.error        错误警告信息 如：{"NO_PERMISSION": "no permission"}
    * @param  {String} opts.api.dir      api: router 中 router与source的对应关系
    * @param  {number} opts.api.skip     url 匹配时跳过前面的级数 默认 0
+   * @param  {number} opts.api.filter   url 匹配时跳过对该 url 的权限判定
    * @param  {Array} opts.hooks         对于非通用资源权限的管理
    * @param  {Function} opts.getUserId  获取用户ID的function
    * @return {Function|Object}          koa async 中间件 || acl 实例
@@ -60,16 +62,20 @@ export default class AclSwagger extends Acl {
     SwaggerParser.validate(opts.api.dir, { validate: { schema: false, spec: false } } )
       .then((api)=> {
         this.apiDir = opts.api.dir
-        this.apiSkip = (opts.api.skip || 0) + 1
         this.api = api
-        debug('get api', this.api)
-        debug('get api skip', this.apiSkip)
+        debug('get api', this.apiDir, this.api)
+
+        this.apiPaths = new SwaggerPathParser( Object.keys(api.paths) )
+
+        debug('get api paths', this.apiPaths)
       })
       .catch( (error)=> {
         throw new Error(error)
       })
 
     this.getUserId = opts.getUserId
+    this.apiSkip = (opts.api.skip || 0) + 1
+    this.filter = typeof opts.api.filter === 'function' ? opts.api.filter : null
     this.ERROR = Object.assign({}, ERROR, opts.error || {})
   }
 
@@ -77,18 +83,21 @@ export default class AclSwagger extends Acl {
    * middleware for koa
    */
   async middleware_koa (ctx, next) {
-    let {url, method, parmas={}} = ctx
+    let {url, method} = ctx
     method = method.toLowerCase()
-    url = "/" + url.split('?')[0].split('/').slice(this.apiSkip).join('/')
 
-    const resource = this.getResource(url, method, parmas)
-    debug(`getResource url: ${url} method: ${method} resource: ${resource}`)
-    if (resource === null)
-      return ctx.throw(this.ERROR.UNKNOWN_PATH, 404)
-    if (!resource === '')  // no permission need
+    if (this.filter && !this.filter(url, method))
       return next()
 
-    const userId = (typeof this.getUserId === 'function') ? await this.getUserId(ctx, next) : (ctx.session && ctx.session.userId) || null
+    url = "/" + url.split('?')[0].split('/').slice(this.apiSkip).join('/')
+
+    const resource = this.getURLItem(url, method, 'x-resource')
+    debug(`get resource ${resource} type`, typeof resource)
+    if (!resource) {
+      return (resource === null) ? ctx.throw(this.ERROR.UNKNOWN_PATH, 404) : next()
+    }
+
+    const userId = (typeof this.getUserId === 'function') ? await this.getUserId(ctx, next) : this.userId || null
     debug(`get userId ${userId}`)
     if (!userId) // haven't login
       return ctx.throw(this.ERROR.NO_AUTH, 401)
@@ -135,55 +144,16 @@ export default class AclSwagger extends Acl {
     return this.api || SwaggerParser.validate(this.apiDir)
   }
 
-  /**
-   * 根据 url method 获取对应 resource
-   * @param  {String} url
-   * @return {String}     资源名
-   */
-  getResource(url, method, params) {
-    const paths = this.api && this.api.paths
-    if (!paths) {
-      debug('get api paths fail')
-      throw new Error('get api paths fail')
-      return
-    }
-
-
-    const _getResource = (paths, path, method)=> {
-      var methodObj = paths[path][method] || {}
-      return methodObj['x-resource'] || ''
-    }
-
-    if ( paths.hasOwnProperty(url) )
-      return _getResource(paths, url, method)
-
-    const pathsArr = Object.keys(paths)
-    for (let path of pathsArr) {
-      if (this._openAPIFormat(path, params) === url)
-        return _getResource(paths, path, method)
-    }
-
-    return null
+  getPathItem(path, method, item) {
+    const info = this.api.paths[path] || {}
+    return info[method] ? (info[method][item] || '') : null
   }
 
-  /**
-   * 根据既定的 url 和对应 path 参数 得到真实的 url
-   * @param  {String} url 既定的 url
-   * @param  {Object} obj url params
-   * @return {String}     真实的 url
-   */
-  _openAPIFormat(url, obj) {
-    var arr = url.split('/')
+  getURLItem(url, method, item) {
+    const {path} = this.apiPaths.match(url) || {}
+    if (!path)
+      return null
 
-    arr.forEach( function (value, index){
-      if (value.match( /^\{\w+\}$/g )) {
-        value = value.replace(/\{|\}/g, '')
-
-        if ( obj.hasOwnProperty(value) )
-          arr[index] = obj[value]
-      }
-    })
-
-    return arr.join('/')
+    return this.getPathItem(path, method, item)
   }
 }
