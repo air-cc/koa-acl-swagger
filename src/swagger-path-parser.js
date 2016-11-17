@@ -11,14 +11,14 @@ export default class swaggerPathParser {
     const arr = path.split('/').slice(1)
 
     const len = arr.length
-    const keyRe = '\\/[\\w|-|%]+'
-    const strRe = "\\/?$"
+    const keyRe = '\\/[\\w|\\-|%]+'
+    const strRe = '\\/?$'
     let reArr = []
     let keys = []
     let courrRe = ''
 
     arr.forEach(function (item, index) {
-      if (item.match(/^\{[\w|-|%]+?\}$/ig)) {
+      if (item.match(/^\{[\w|\\-|%]+?\}$/ig)) {
         courrRe += (index < len-1) ? keyRe : (keyRe + strRe)
         const re = new RegExp(courrRe, 'ig')
         reArr.push(re)
@@ -26,7 +26,7 @@ export default class swaggerPathParser {
         const key = item.replace(/[\{|\}]/ig, '')
         keys.push(key)
       } else {
-        courrRe += "\\/" + item
+        courrRe += '\\/' + item
       }
     })
 

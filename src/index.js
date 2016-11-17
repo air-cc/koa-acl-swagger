@@ -7,7 +7,10 @@
 
 /**
  * 目前策略：
- * 事先定义好 role 对应资源的 crud 操作，在 Router 中标记该 url 所代表的资源属性
+ * 事先定义好 role 对应资源的 crud 操作，在 Router 中标记该 url 所代表的资源
+ * 这里将 Router API 的定义放到遵循 openAPI 规范的 YAML 文件中，以 x-resource 字段来标记当前资源
+ * 且用 HTTP method 的 get/post/put/delete 指代对资源的查询/新建/更新/删除
+ *
  */
 
 import Acl from './acl'
@@ -21,9 +24,9 @@ const debug = debugMod('koa-acl-swagger:middleware')
 const {redisBackend, mongodbBackend, memoryBackend} = Acl
 
 const ERROR = {
-  "NO_PERMISSION": "no permission",
-  "NO_AUTH": "no auth",
-  "UNKNOWN": 'unknown error'
+  'NO_PERMISSION': 'no permission',
+  'NO_AUTH': 'no auth',
+  'UNKNOWN': 'unknown error'
 }
 
 
@@ -32,7 +35,7 @@ export default class AclSwagger extends Acl {
   /**
    * AclSwagger 构造函数
    * @param  {Object} opts.store        存储角色信息的数据库客户端 如：{type: 'redis', client: '', prefix}
-   * @param  {Object} opts.error        错误警告信息 如：{"NO_PERMISSION": "no permission"}
+   * @param  {Object} opts.error        错误警告信息 如：{'NO_PERMISSION': 'no permission'}
    * @param  {String} opts.api.dir      api: router 中 router与source的对应关系
    * @param  {number} opts.api.skip     url 匹配时跳过前面的级数 默认 0
    * @param  {number} opts.api.filter   url 匹配时跳过对该 url 的权限判定
@@ -56,7 +59,6 @@ export default class AclSwagger extends Acl {
     opts.api = opts.api || {dir: '', skip: 0}
     if (!fs.existsSync(opts.api.dir)) {
       throw new Error('api file not exists')
-      return
     }
 
     SwaggerParser.validate(opts.api.dir, { validate: { schema: false, spec: false } } )
@@ -89,15 +91,15 @@ export default class AclSwagger extends Acl {
     if (this.filter && !this.filter(url, method))
       return next()
 
-    url = "/" + url.split('?')[0].split('/').slice(this.apiSkip).join('/')
+    url = '/' + url.split('?')[0].split('/').slice(this.apiSkip).join('/')
 
-    const resource = this.getURLItem(url, method, 'x-resource')
+    const resource = this.getItemByURL('x-resource', url, method)
     debug(`get resource ${resource} type`, typeof resource)
     if (!resource) {
       return (resource === null) ? ctx.throw(this.ERROR.UNKNOWN_PATH, 404) : next()
     }
 
-    const userId = (typeof this.getUserId === 'function') ? await this.getUserId(ctx, next) : this.userId || null
+    const userId = (typeof this.getUserId === 'function') ? await this.getUserId(ctx) : this.userId || null
     debug(`get userId ${userId}`)
     if (!userId) // haven't login
       return ctx.throw(this.ERROR.NO_AUTH, 401)
@@ -108,8 +110,8 @@ export default class AclSwagger extends Acl {
     try {
       ret = await this.isAllowedAsync(userId, resource, method)
     } catch (error) {
-        debug(`Check permission Error: ${error}`)
-        return ctx.throw(this.ERROR.UNKNOWN, 404)
+      debug(`Check permission Error: ${error}`)
+      return ctx.throw(this.ERROR.UNKNOWN, 404)
     }
 
     if (!ret) {   // have no permission
@@ -121,7 +123,10 @@ export default class AclSwagger extends Acl {
     return next()
   }
 
-
+  /**
+   * 获取 koa@2 的中间件，并绑定当前实例的上下文
+   * @return {function} koa acl 中间件
+   */
   getMiddleware() {
     return this.middleware_koa.bind(this)
   }
@@ -132,9 +137,9 @@ export default class AclSwagger extends Acl {
    * @param  {Function} next [description]
    * @return {[type]}        [description]
    */
-  async hooks(ctx, next) {
+  // async hooks(ctx, next) {
 
-  }
+  // }
 
   /**
    * 获取 API 配置信息
@@ -144,16 +149,21 @@ export default class AclSwagger extends Acl {
     return this.api || SwaggerParser.validate(this.apiDir)
   }
 
-  getPathItem(path, method, item) {
-    const info = this.api.paths[path] || {}
-    return info[method] ? (info[method][item] || '') : null
-  }
+  /**
+   * 根据 url 获得对应 path 下 item 的值
+   * @param  {string} item   item 名
+   * @param  {string} url    当前访问 URL
+   * @param  {string} method 当前访问的 HTTP method
+   * @return {string|null}   查找到则返回对应item的值，否则返回 null
+   */
+  getItemByURL(item, url, method) {
+    debug(`getItemByURL ${item} ${url} ${method}`)
 
-  getURLItem(url, method, item) {
     const {path} = this.apiPaths.match(url) || {}
     if (!path)
       return null
 
-    return this.getPathItem(path, method, item)
+    const info = this.api.paths[path] || {}
+    return info[method] ? (info[method][item] || '') : null
   }
 }

@@ -1,4 +1,4 @@
-# Koa-ACL-Swagger (Preview)
+# Koa-ACL-Swagger
 
 **NOTICE: can not be used in production**
 
@@ -83,7 +83,7 @@ error       {json-object}     replace the default error message
 
   return a middleware for koa@2.x
 
-### [acl module](https://github.com/OptimalBits/node_acl) Async function
+### [Acl module](https://github.com/OptimalBits/node_acl) Async function
 
   convert [acl module](https://github.com/OptimalBits/node_acl) functions to async style (translate by [bulebird](https://github.com/petkaantonov/bluebird)). like `addUserRolesAsync` `allowAsync` `isAllowedAsync` ...
 

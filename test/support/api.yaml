@@ -1,0 +1,105 @@
+  swagger: "2.0"
+  info:
+    version: "1.0.0"
+    title: "api demo"
+  basePath: "/api"
+  schemes:
+    - "http"
+  paths:
+    /users:
+      get:
+        description: "return all users"
+        x-resource: "users"
+        responses:
+          "200":
+            description: "user response"
+            schema:
+              type: "array"
+              items:
+                $ref: "#/definitions/User"
+          default:
+            description: "unexpected error"
+            schema:
+              $ref: "#/definitions/ErrorModel"
+      post:
+        description: "Creates a new user"
+        parameters:
+          - name: "data"
+            in: "body"
+            description: "user info"
+            required: true
+            schema:
+              $ref: "#/definitions/NewUser"
+        x-resource: "users"
+        responses:
+          "200":
+            description: "user response"
+            schema:
+              $ref: "#/definitions/User"
+          default:
+            description: "unexpected error"
+            schema:
+              $ref: "#/definitions/ErrorModel"
+    /users/{id}:
+      get:
+        description: "return one person info"
+        parameters:
+          - name: "id"
+            in: "path"
+            required: true
+            type: "string"
+        x-resource: "user"
+        responses:
+          "200":
+            description: "user response"
+            schema:
+              $ref: "#/definitions/User"
+          default:
+            description: "unexpected error"
+            schema:
+              $ref: "#/definitions/ErrorModel"
+      delete:
+        description: "deletes a single user based on the ID supplied"
+        parameters:
+          - name: "id"
+            in: "path"
+            required: true
+            type: "string"
+        x-resource: "user"
+        responses:
+          "204":
+            description: "user deleted"
+          default:
+            description: "unexpected error"
+            schema:
+              $ref: "#/definitions/ErrorModel"
+  definitions:
+    User:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        age:
+          type: "integer"
+          format: "int32"
+    NewUser:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+          required: true
+        age:
+          type: "integer"
+          format: "int32"
+          required: true
+    ErrorModel:
+      type: "object"
+      required:
+        - "code"
+        - "message"
+      properties:
+        code:
+          type: "integer"
+          format: "int32"
+        message:
+          type: "string"

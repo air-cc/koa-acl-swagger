@@ -11,15 +11,15 @@ class AclExt extends Acl {
   // 获取所有的roles
   async allRolesAsync() {
     return await new Promise((resolve, reject)=> {
-        this.backend.getAsync(this.options.buckets.meta, 'roles').nodeify(
-          (error, result)=> {
-            if (error) {
-              return reject(error)
-            }
-            resolve(result)
+      this.backend.getAsync(this.options.buckets.meta, 'roles').nodeify(
+        (error, result)=> {
+          if (error) {
+            return reject(error)
           }
-        )
-      })
+          resolve(result)
+        }
+      )
+    })
   }
 
   /**
@@ -40,7 +40,7 @@ class AclExt extends Acl {
       return true
 
     } catch (error) {
-      debug(`removeUserAllRoles fail`, error)
+      debug(`removeUserAllRoles fail ${error}`)
       return false
     }
   }

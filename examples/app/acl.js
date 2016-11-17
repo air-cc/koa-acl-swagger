@@ -10,8 +10,8 @@ const acl = new Acl({
     client: aclStore,
     prefix: 'examples:app:'
   },
-  getUserId: async (ctx, next)=> {
-    return 'test'
+  getUserId: async (ctx)=> {
+    return ctx.userId || 'test'
   },
   api: {
     dir: path.join(__dirname, './api.yaml'),
