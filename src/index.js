@@ -120,6 +120,7 @@ export default class AclSwagger extends Acl {
     }
 
     debug(`Allowed -- userId: ${userId} resource: ${resource} method: ${method} | - | url: ${url}`)
+    ctx._acl = this
     return next()
   }
 
