@@ -16,24 +16,29 @@ export default class swaggerPathParser {
     let reArr = []
     let keys = []
     let courrRe = ''
+    let isPureStr = true
 
     arr.forEach(function (item, index) {
       if (item.match(/^\{[\w|\\-|%]+?\}$/ig)) {
-        courrRe += (index < len-1) ? keyRe : (keyRe + strRe)
-        const re = new RegExp(courrRe, 'ig')
-        reArr.push(re)
-
+        isPureStr = false
+        courrRe += keyRe
         const key = item.replace(/[\{|\}]/ig, '')
         keys.push(key)
       } else {
         courrRe += '\\/' + item
       }
-    })
 
-    if (reArr.length === 0) {
-      const re = new RegExp(courrRe + strRe, 'ig')
-      reArr.push(re)
-    }
+      if (index == len-1) {
+        courrRe += strRe
+        isPureStr = false
+      }
+
+      if (!isPureStr) {
+        const re = new RegExp(courrRe, 'ig')
+        reArr.push(re)
+        isPureStr = true
+      }
+    })
 
     return {
       reArr: reArr,
